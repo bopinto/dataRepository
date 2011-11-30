@@ -1,0 +1,248 @@
+package pt.utl.ist.datarepository;
+
+import java.io.IOException;
+import java.util.HashMap;
+
+import org.apache.log4j.Logger;
+
+import com.sun.org.apache.bcel.internal.generic.NEW;
+
+import pt.utl.ist.datarepository.datamodel.DataMetaModel;
+import pt.utl.ist.datarepository.datamodel.DataModel;
+import pt.utl.ist.datarepository.datamodel.DataModelFactory;
+import pt.utl.ist.datarepository.utils.PasswordEncryptor;
+
+public class DataRepository {
+
+	private static DataRepository instance = null;
+	private static Logger _log = Logger.getLogger(DataRepository.class);
+	
+	private SessionManager sessionManager = new SessionManager();
+	private HashMap<String, DataClient> registeredUsers = new HashMap<String, DataClient>();
+	
+    private final String OPEN_FAILURE = "<failure><reason>";
+    private final String CLOSE_FAILURE = "</reason></failure>";
+    private final String SUCCESS = "<success/>";
+    private final String OPEN_SUCCESS = "<success>";
+    private final String CLOSE_SUCCESS = "</success>";
+    
+    private HashMap<String, DataMetaModel> dataModels = new HashMap<String, DataMetaModel>();
+    
+    private DataRepositoryClientInterface clientInterface = new DataRepositoryClientInterface("http://localhost:8080/dataRepository/ce");
+	
+	private DataRepository() {
+		// init the registered users
+		String encriptedpass = PasswordEncryptor.encrypt("bwpass", null);
+		DataClient bw = new DataClient("bw", encriptedpass);
+		
+		String encriptedpass2 = PasswordEncryptor.encrypt("yawlpass", null);
+		DataClient yawl = new DataClient("yawl", encriptedpass2);
+		
+		String encriptedpass3 = PasswordEncryptor.encrypt("goalenginepass", null);
+		DataClient goalEngine = new DataClient("goalengine", encriptedpass3);
+		
+		this.registeredUsers.put(bw.getUsername(), bw);
+		this.registeredUsers.put(yawl.getUsername(), yawl);
+		this.registeredUsers.put(goalEngine.getUsername(), goalEngine);
+		
+		
+	}
+	
+	public static DataRepository get() {
+		if(instance == null) {
+			instance = new DataRepository();
+		}
+		return instance;
+	}
+	
+	public SessionManager getSessionManager() { return this.sessionManager; }
+	
+	public void notifyDataUpdate(String dataModelURI, String dataModelInstanceID, String elementURI) {
+		try {
+			clientInterface.notifyDataUpdate(dataModelURI, dataModelInstanceID, elementURI);
+		} catch (IOException e) {
+			_log.error("Could not notity of data change (IOException)");
+		}
+	}
+	
+	
+	public void loadModel(String XMLmodel) {
+		DataMetaModel newDataModel = DataModelFactory.parseXMLDataModel(XMLmodel);
+		if(newDataModel != null) {
+			this.dataModels.put(newDataModel.getURI(), newDataModel);
+			_log.info("New data model successfully parsed and loaded.");
+		} else {
+			_log.error("Could not parse the data model.");
+		}
+		
+	}
+	
+    // connect
+    public String connect(String username, String password, long timeout) {
+    	if(username == null || password == null) {
+			return failMsg("Please submit user and password");
+		}
+    	
+    	String result = validateLogin(username, password);
+    	if(result != null) {
+    		return failMsg(result);
+    	}
+    	
+    	DataClient client = this.registeredUsers.get(username);
+    	result = this.sessionManager.createNewSession(client, timeout);
+    	
+    	return result;
+    }
+    
+    public String checkConnection(String sessionHandle) {
+    	return this.sessionManager.checkConnection(sessionHandle) ? SUCCESS :
+    		OPEN_FAILURE + "Invalid or expired session" + CLOSE_FAILURE;
+    }
+    
+    public String createModelInstance(String dataModelURI, String activitySpecURI, String activityInstanceID, String goalSpecURI, String goalInstanceID) {
+    	_log.info("Request to generate a new instance of the data model");
+    	
+    	if(!inputNotNull(dataModelURI, activitySpecURI, activityInstanceID, goalSpecURI, goalInstanceID)) {
+    		return OPEN_FAILURE + "Full info not provided" + CLOSE_FAILURE;
+    	}
+    	
+    	// get the data model
+    	DataMetaModel dataMetaModel = this.dataModels.get(dataModelURI);
+    	if(dataMetaModel == null) {
+    		_log.error("Fail to create data model instance: Requested data model does not exist");
+    		return OPEN_FAILURE + "Requested data model does not exist" + CLOSE_FAILURE;
+    	}
+    	
+    	// create instance
+    	DataModel dataModel = dataMetaModel.generateDataModel();
+    	
+    	_log.info("Data Model Instance generated successfuly");
+    	return dataModel.getInstanceID();
+    }
+    
+    public String getElementData(String dataModelURI, String elementURI, String instanceID) {
+    	_log.info("Request to get data from element");
+    	
+    	if(!inputNotNull(dataModelURI, elementURI, instanceID)) {
+    		return OPEN_FAILURE + "Full info not provided" + CLOSE_FAILURE;
+    	}
+    	
+    	// get the data model
+    	DataMetaModel dataMetaModel = this.dataModels.get(dataModelURI);
+    	if(dataMetaModel == null) {
+    		_log.error("Fail to get data element: Requested data model does not exist");
+    		return OPEN_FAILURE + "Requested data model does not exist" + CLOSE_FAILURE;
+    	}
+    	
+    	DataModel dataModel = dataMetaModel.getDataModel(instanceID);
+    	if(dataModel == null) {
+    		_log.error("Fail to get data element: Requested data model does not exist");
+    		return OPEN_FAILURE + "Requested data model does not exist" + CLOSE_FAILURE;
+    	}
+    	
+    	String elemXML = dataModel.getElementAsXMLString(elementURI);
+    	if(elemXML == null) {
+    		return failMsg("Invalid element");
+    	}
+    	return elemXML;
+    }
+    
+    public String submitData(String dataModelURI, String instanceID, 
+    		String dataName, String dataType, 
+    		String value, String restrictions, boolean isSkipped) {    	
+    	_log.info("Request to submit data");
+    	
+    	if(!inputNotNull(dataModelURI, instanceID, dataName, 
+    			dataType, value)) {
+    		return OPEN_FAILURE + "Full info not provided" + CLOSE_FAILURE;
+    	}
+    	
+    	// get the data model
+    	DataMetaModel dataMetaModel = this.dataModels.get(dataModelURI);
+    	if(dataMetaModel == null) {
+    		_log.error("Fail to get data element: Requested data model does not exist");
+    		return OPEN_FAILURE + "Requested data model does not exist" + CLOSE_FAILURE;
+    	}
+    	
+    	DataModel dataModel = dataMetaModel.getDataModel(instanceID);
+    	if(dataModel == null) {
+    		_log.error("Fail to get data element: Requested data model does not exist");
+    		return OPEN_FAILURE + "Requested data model does not exist" + CLOSE_FAILURE;
+    	}
+    	
+    	// validate element uri
+    	// validate element
+    	if(validateAttributeURI(dataName) &&
+    			dataModel.validateAttribute(dataName, dataType)) {
+    		if(!isSkipped) {
+    			dataModel.insertAttributeValue(dataName, value);
+    		} else {
+    			dataModel.skipAttribute(dataName);
+    		}
+    	} else {
+    		return failMsg("Failed to update attribute value");
+    	}
+    	_log.info("Succeeded in update data value");
+    	return SUCCESS;
+    }
+    
+    public String getDataModel(String dataModelURI, String instanceID) {
+    	_log.info("Request of data model");
+    	
+    	if(!inputNotNull(dataModelURI, instanceID)) {
+    		return OPEN_FAILURE + "Full info not provided" + CLOSE_FAILURE;
+    	}
+    	
+    	// get the data model
+    	DataMetaModel dataMetaModel = this.dataModels.get(dataModelURI);
+    	if(dataMetaModel == null) {
+    		_log.error("Fail to get data element: Requested data model does not exist");
+    		return OPEN_FAILURE + "Requested data model does not exist" + CLOSE_FAILURE;
+    	}
+    	
+    	DataModel dataModel = dataMetaModel.getDataModel(instanceID);
+    	if(dataModel == null) {
+    		_log.error("Fail to get data element: Requested data model does not exist");
+    		return OPEN_FAILURE + "Requested data model does not exist" + CLOSE_FAILURE;
+    	}
+    	
+    	String dataModelXML = dataModel.toXMLString();
+    	
+    	if(dataModelXML == null) {
+    		_log.error("Could not obtain data model XML");
+    		return failMsg("Could not obtain data model XML");
+    	}
+    	return dataModelXML;
+    }
+
+    
+	///// PRIVATE METHODS /////
+    protected String validateLogin(String username, String password) {
+    	DataClient user = this.registeredUsers.get(username);
+    	if(user == null) {
+    		return "Invalid user";
+    	}
+    	if(!user.getPassword().equals(password)) {
+    		return "Invalid password";
+    	}
+    	return null;
+    }
+    
+    protected String failMsg(String msg) {
+        return OPEN_FAILURE + msg + CLOSE_FAILURE ;
+    }
+    
+    protected boolean inputNotNull(String...strings) {
+    	for (String string : strings) {
+			if(string == null) {
+				return false;
+			}
+		}
+    	return true;
+    }
+    
+    protected boolean validateAttributeURI(String elementURI) {
+    	String[] elementArray = elementURI.split("\\.");
+    	return (elementArray[0] != null && elementArray[1] != null);
+    }
+}

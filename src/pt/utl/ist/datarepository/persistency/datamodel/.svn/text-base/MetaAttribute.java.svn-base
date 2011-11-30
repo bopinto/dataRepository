@@ -1,0 +1,30 @@
+package pt.utl.ist.datarepository.datamodel;
+
+public class MetaAttribute {
+	
+	public enum Type {STRING, NUMBER, BOOLEAN};
+	
+	private String name;
+	private final MetaAttribute.Type type;
+	private boolean isKeyAttribute;
+	
+	private MetaEntity entity;
+	
+	public MetaAttribute(String name, Type type, boolean isKeyAttribute, MetaEntity entity) {
+		this.name = name;
+		this.type = type;
+		this.entity = entity;
+		this.isKeyAttribute = isKeyAttribute;
+	}
+	
+	public String getName() { return this.name; }
+	
+	public Attribute generateAttribute(Entity ent) {
+		Attribute att = new Attribute(ent, this.type, this.name, this.isKeyAttribute);
+		return att;
+	}
+	
+	public MetaEntity getEntity() {
+		return this.entity;
+	}
+}

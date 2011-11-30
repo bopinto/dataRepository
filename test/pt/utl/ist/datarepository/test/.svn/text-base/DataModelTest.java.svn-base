@@ -1,0 +1,47 @@
+package pt.utl.ist.datarepository.test;
+
+import junit.framework.Assert;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import pt.utl.ist.datarepository.datamodel.Attribute;
+import pt.utl.ist.datarepository.datamodel.DataModel;
+import pt.utl.ist.datarepository.datamodel.Entity;
+import pt.utl.ist.datarepository.datamodel.MetaAttribute.Type;
+
+public class DataModelTest {
+	
+	DataModel dataModel = null;
+	
+	@Before
+	public void setUp() {
+		dataModel = new DataModel("TestDataModel", "1");
+		
+		Entity entity = new Entity("Entity1");
+		Attribute att = new Attribute(entity, Type.STRING, "Attribute1", true);
+		entity.addAttribute(att);
+			
+		dataModel.addEntity(entity);
+	}
+	
+	@Test
+	public void testGetElementAsXMLString() {
+		// get entity
+		String entityAsXMLResult = "<Entity1 isSkipped=\"false\" isDefined=\"false\">" +
+				"<Entity1.Attribute1 isSkipped=\"false\" isDefined=\"false\">" +
+				"<isKey>true</isKey><Type>STRING</Type>" +
+				"<Value>N/A</Value></Entity1.Attribute1></Entity1>";
+		
+		// get attribute
+		String attributeAsXMLResult = "<Entity1.Attribute1 isSkipped=\"false\" isDefined=\"false\">" +
+		"<isKey>true</isKey><Type>STRING</Type><Value>N/A</Value></Entity1.Attribute1>";
+		
+		String entityAsXML = dataModel.getElementAsXMLString("Entity1");
+		String attributeAsXML = dataModel.getElementAsXMLString("Entity1.Attribute1");
+		
+		Assert.assertEquals(entityAsXMLResult, entityAsXML);
+		Assert.assertEquals(attributeAsXMLResult, attributeAsXML);
+	}
+
+}

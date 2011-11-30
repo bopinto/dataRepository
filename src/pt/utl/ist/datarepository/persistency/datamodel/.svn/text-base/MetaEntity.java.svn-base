@@ -1,0 +1,33 @@
+package pt.utl.ist.datarepository.datamodel;
+
+import java.util.ArrayList;
+
+public class MetaEntity {
+	
+	private String name;
+	private ArrayList<MetaAttribute> attributes = new ArrayList<MetaAttribute>();
+	private ArrayList<MetaRelation> relations = new ArrayList<MetaRelation>();
+
+	public MetaEntity(String name) {
+		this.name = name;
+	}
+	
+	public String getName() { return this.name; }
+	
+	public void addAttribute(MetaAttribute attribute) {
+		this.attributes.add(attribute);
+	}
+	
+	public void addRelation(MetaRelation relation) {
+		this.relations.add(relation);
+	}
+	
+	public Entity generateEntity() {
+		Entity ent = new Entity(this.name);
+		for (MetaAttribute att : this.attributes) {
+			ent.addAttribute(att.generateAttribute(ent));
+		}
+		
+		return ent;
+	}
+}

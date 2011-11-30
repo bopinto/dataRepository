@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+	targetNamespace="http://www.example.org/DataModelSchema" 
+	xmlns:dm="http://www.example.org/DataModelSchema" 
+	elementFormDefault="qualified">
+
+<xs:element name="DataModel">
+	<xs:complexType>
+		<xs:sequence>
+			<xs:element minOccurs="1" maxOccurs="1" name="SpecificationInfo" type="dm:specificationInfo" />
+			<xs:element minOccurs="0" maxOccurs="1" name="mappings" type="dm:mappings" />
+			<xs:element minOccurs="1" maxOccurs="unbounded" name="Entity" type="dm:entity" />
+			<xs:element minOccurs="0" maxOccurs="unbounded" name="Relation" type="dm:relation" />
+		</xs:sequence>
+	</xs:complexType>
+</xs:element>
+
+<xs:complexType name="specificationInfo">
+	<xs:sequence>
+		<xs:element minOccurs="1" maxOccurs="1" name="dataModelURI" type="xs:string" />
+		<xs:element minOccurs="1" maxOccurs="1" name="activityModelURI" type="xs:string" />
+		<xs:element minOccurs="1" maxOccurs="1" name="goalModelURI" type="xs:string" />
+	</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="entity">
+		<xs:sequence>
+			<xs:element minOccurs="1" maxOccurs="1" name="id" type="xs:string" />
+			<xs:element minOccurs="1" maxOccurs="1" name="Name" type="xs:string" />
+			<xs:element minOccurs="0" maxOccurs="unbounded" name="Attribute" type="dm:attribute" />
+		</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="attribute">
+	<xs:sequence>
+		<xs:element minOccurs="1" maxOccurs="1" name="Name" type="xs:string" />
+		<xs:element minOccurs="1" maxOccurs="1" name="Type" type="dm:attType" />
+		<xs:element minOccurs="1" maxOccurs="1" name="isKey" type="xs:boolean" />
+	</xs:sequence>
+</xs:complexType>
+
+<xs:simpleType name="attType">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="STRING" />
+		<xs:enumeration value="BOOLEAN" />
+		<xs:enumeration value="NUMBER" />
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="relation">
+	<xs:sequence>
+		<xs:element minOccurs="1" maxOccurs="1" name="EntityOne" type="dm:entityRelation" />
+		<xs:element minOccurs="1" maxOccurs="1" name="EntityTwo" type="dm:entityRelation" />
+	</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="entityRelation">
+	<xs:sequence>
+		<xs:element minOccurs="1" maxOccurs="1" name="EntityID" type="xs:string" />
+		<xs:element minOccurs="1" maxOccurs="1" name="EntityCardinality" type="dm:cardinality" />
+		<xs:element minOccurs="1" maxOccurs="1" name="isEntityKey" type="xs:boolean" />
+	</xs:sequence>
+</xs:complexType>
+
+<xs:simpleType name="cardinality">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="MANY" />
+		<xs:enumeration value="ZERO_OR_ONE" />
+		<xs:enumeration value="ONE" />
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="mappings">
+	<xs:sequence>
+		<xs:element minOccurs="1" maxOccurs="unbounded" name="mapping" type="dm:mapping" />
+	</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="mapping">
+		<xs:sequence>
+			<xs:element minOccurs="1" maxOccurs="1" name="varName" type="xs:string" />
+			<xs:element minOccurs="1" maxOccurs="unbounded" name="mapsTo" type="xs:string"/>
+		</xs:sequence>
+</xs:complexType>
+
+</xs:schema>

@@ -1,0 +1,10 @@
+package pt.utl.ist.datarepository.datamodel;
+
+public class DataModelFactory {
+	
+	public static DataMetaModel parseXMLDataModel(String model) {
+    	//TODO stub method
+    	return null;
+    }
+
+}
